@@ -4,3 +4,4 @@ httpx
 beautifulsoup4
 apscheduler
 python-dotenv
+python-telegram-bot==20.6
