@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update, Bot
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Application
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 
@@ -11,10 +11,16 @@ CHAT_ID = "-1002618033336"
 bot = Bot(token=BOT_TOKEN)
 scheduler = BackgroundScheduler()
 
-try:
-    bot.delete_webhook()
-except:
-    pass
+# ❌ हटाने वाले गेम्स की लिस्ट
+EXCLUDED_GAMES = ["char minar", "charminar", "char-minar"]
+
+# ✅ Auto webhook remover
+async def remove_webhook(app: Application):
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        print("✅ Webhook deleted successfully.")
+    except Exception as e:
+        print("❌ Webhook delete failed:", e)
 
 def fetch_all_results():
     url = "https://satta-king-fixed-no.in/"
@@ -43,8 +49,8 @@ def fetch_all_results():
             for g, v in zip(games, values):
                 name = g.text.strip().lower()
                 value = v.text.strip()
-                if name == "char minar":
-                    continue
+                if name in EXCLUDED_GAMES:
+                    continue  # ❌ Excluded game
                 day_result[name] = value
 
             if date_key not in results_by_date:
@@ -126,7 +132,7 @@ def schedule_jobs():
     scheduler.start()
 
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).post_init(remove_webhook).build()
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("result", result_cmd))
