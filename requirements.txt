@@ -3,3 +3,4 @@ requests
 httpx
 beautifulsoup4
 apscheduler
+python-dotenv
