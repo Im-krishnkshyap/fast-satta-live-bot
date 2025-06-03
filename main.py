@@ -14,7 +14,7 @@ scheduler = BackgroundScheduler()
 # ❌ हटाने वाले गेम्स की लिस्ट
 EXCLUDED_GAMES = ["char minar", "charminar", "char-minar"]
 
-# ✅ Auto webhook remover
+# ✅ Webhook हटाने वाला फंक्शन (Conflict Error से बचाव)
 async def remove_webhook(app: Application):
     try:
         await bot.delete_webhook(drop_pending_updates=True)
@@ -22,6 +22,7 @@ async def remove_webhook(app: Application):
     except Exception as e:
         print("❌ Webhook delete failed:", e)
 
+# 🔍 रिज़ल्ट स्क्रैप करने का फंक्शन
 def fetch_all_results():
     url = "https://satta-king-fixed-no.in/"
     try:
@@ -50,7 +51,7 @@ def fetch_all_results():
                 name = g.text.strip().lower()
                 value = v.text.strip()
                 if name in EXCLUDED_GAMES:
-                    continue  # ❌ Excluded game
+                    continue
                 day_result[name] = value
 
             if date_key not in results_by_date:
@@ -62,13 +63,15 @@ def fetch_all_results():
     except:
         return {}
 
+# 📋 रिज़ल्ट का फॉर्मेट बनाना
 def format_result(data: dict, date_label: str):
     msg = f"*📅 {date_label} के रिज़ल्ट:*\n"
     for game, val in data.items():
-        emoji_val = ''.join(f"{d}\u20E3" for d in val) if val.upper() != "WAIT" else "⏳"
+        emoji_val = ''.join(f"{d}️⃣" for d in val if d.isdigit()) if val.upper() != "WAIT" else "⏳"
         msg += f"*{game.upper()}* == {emoji_val}\n"
     return msg
 
+# 🔘 /start कमांड
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🙏 *स्वागत है Fast Satta Live Bot में!*\n\n"
@@ -80,6 +83,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+# 🔘 /help कमांड
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📌 *Available Commands:*\n"
@@ -91,6 +95,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+# 🔘 /result कमांड
 async def result_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_data = fetch_all_results()
     today = datetime.now().strftime("%d-%m-%Y")
@@ -101,6 +106,7 @@ async def result_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "❌ आज का रिज़ल्ट अभी उपलब्ध नहीं है।"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
+# 🔘 /history कमांड
 async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_data = fetch_all_results()
     sorted_dates = sorted(all_data.keys(), reverse=True)[:5]
@@ -111,6 +117,7 @@ async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg += f"{date} ➤ {line}\n"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
+# 🔘 /date DD-MM-YYYY कमांड
 async def date_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("⚠️ कृपया तारीख़ दें, जैसे: /date 03-06-2025")
@@ -124,6 +131,7 @@ async def date_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = f"❌ {user_date} का कोई डेटा नहीं मिला।"
     await update.message.reply_text(msg, parse_mode="Markdown")
 
+# ⏰ Auto scheduler for fixed timings
 def schedule_jobs():
     times = ["03:15", "04:48", "06:15", "09:58", "11:57", "05:35"]
     for t in times:
@@ -131,6 +139,7 @@ def schedule_jobs():
         scheduler.add_job(lambda: bot.send_message(chat_id=CHAT_ID, text="⏳ Auto Result Update Coming Soon"), "cron", hour=hr, minute=mn)
     scheduler.start()
 
+# 🚀 Bot launch
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(remove_webhook).build()
     app.add_handler(CommandHandler("start", start_cmd))
