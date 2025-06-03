@@ -10,6 +10,13 @@ CHAT_ID = "-1002618033336"
 bot = Bot(token=BOT_TOKEN)
 scheduler = BackgroundScheduler()
 
+# ✅ Webhook हटाना (conflict से बचाव)
+try:
+    bot.delete_webhook()
+    print("✅ Webhook deleted to enable polling.")
+except Exception as e:
+    print(f"⚠️ Failed to delete webhook: {e}")
+
 def get_live_results():
     url = "https://satta-king-fixed-no.in/"
     try:
@@ -21,14 +28,13 @@ def get_live_results():
         for game, result in zip(live_games, live_results):
             name = game.text.strip().lower()
             value = result.text.strip()
-            if value != "WAIT":
-                data[name] = value
+            data[name] = value
         return data
     except Exception:
         return {}
 
 def format_result(data: dict):
-    msg = "*🔛खबर की जानकारी👉\\n⚠️⚠️⚠️⚠️⚠️⚠️〽️〽️*\\n"
+    msg = "*🔛खबर की जानकारी👉*\n*⚠️⚠️⚠️⚠️⚠️⚠️〽️〽️*\n"
     name_map = {
         "delhi bazar": "दिल्ली बाजार",
         "shree ganesh": "श्री गणेश",
@@ -38,14 +44,15 @@ def format_result(data: dict):
         "desawar": "दिसावर",
         "disawar": "दिसावर"
     }
+    lines = []
     for eng_name, hindi_name in name_map.items():
-        num = data.get(eng_name.lower())
-        if num:
-            digits = "".join(f"{d}\u20E3" for d in num)
-            msg += f"*{hindi_name}* =={digits}\\n"
+        val = data.get(eng_name, "WAIT")
+        if val.upper() == "WAIT":
+            lines.append(f"*{hindi_name}* ==⏳")
         else:
-            msg += f"*{hindi_name}* ==\\n"
-    return msg
+            digits = ''.join(f"{d}\u20E3" for d in val)
+            lines.append(f"*{hindi_name}* =={digits}")
+    return msg + "\n".join(lines)
 
 async def send_result(context: ContextTypes.DEFAULT_TYPE = None):
     data = get_live_results()
@@ -69,8 +76,11 @@ def schedule_jobs():
     scheduler.start()
 
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("result", result_cmd))
-    schedule_jobs()
-    print("🤖 Bot started...")
-    app.run_polling()
+    try:
+        app = ApplicationBuilder().token(BOT_TOKEN).build()
+        app.add_handler(CommandHandler("result", result_cmd))
+        schedule_jobs()
+        print("🤖 Bot started polling...")
+        app.run_polling()
+    except Exception as e:
+        print(f"⚠️ Error: {e}")
