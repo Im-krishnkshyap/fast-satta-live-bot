@@ -1,15 +1,11 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from apscheduler.schedulers.background import BackgroundScheduler
-from dotenv import load_dotenv
 
-load_dotenv()
-
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+BOT_TOKEN = "8045217918:AAGqMoKrbMNni9eM7VGlmgETy6tZpMzSuos"
+CHAT_ID = "-1002618033336"
 
 bot = Bot(token=BOT_TOKEN)
 scheduler = BackgroundScheduler()
@@ -28,12 +24,11 @@ def get_live_results():
             if value != "WAIT":
                 data[name] = value
         return data
-    except Exception as e:
+    except Exception:
         return {}
 
 def format_result(data: dict):
-    msg = "*🔛खबर की जानकारी👉\n⚠️⚠️⚠️⚠️⚠️⚠️〽️〽️*\n"
-    ordered_names = ["दिल्ली बाजार", "श्री गणेश", "फरीदाबाद", "गाजियाबाद", "गली", "दिसावर"]
+    msg = "*🔛खबर की जानकारी👉\\n⚠️⚠️⚠️⚠️⚠️⚠️〽️〽️*\\n"
     name_map = {
         "delhi bazar": "दिल्ली बाजार",
         "shree ganesh": "श्री गणेश",
@@ -43,17 +38,16 @@ def format_result(data: dict):
         "desawar": "दिसावर",
         "disawar": "दिसावर"
     }
-    result_lines = []
     for eng_name, hindi_name in name_map.items():
         num = data.get(eng_name.lower())
         if num:
-            digits = "".join(f"{d}⃣" for d in num)
-            result_lines.append(f"*{hindi_name}* =={digits}")
+            digits = "".join(f"{d}\u20E3" for d in num)
+            msg += f"*{hindi_name}* =={digits}\\n"
         else:
-            result_lines.append(f"*{hindi_name}* ==")
-    return msg + "\n".join(result_lines)
+            msg += f"*{hindi_name}* ==\\n"
+    return msg
 
-async def send_result(context: ContextTypes.DEFAULT_TYPE):
+async def send_result(context: ContextTypes.DEFAULT_TYPE = None):
     data = get_live_results()
     if data:
         msg = format_result(data)
@@ -67,16 +61,9 @@ async def result_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⏳ कृपया प्रतीक्षा करें, परिणाम अभी उपलब्ध नहीं हैं।")
 
-def schedule_jobs(app):
-    times = [
-        ("03:15", "delhi bazar"),
-        ("04:48", "shree ganesh"),
-        ("06:15", "faridabad"),
-        ("09:58", "ghaziabad"),
-        ("11:57", "gali"),
-        ("05:35", "disawar")
-    ]
-    for t, name in times:
+def schedule_jobs():
+    times = ["03:15", "04:48", "06:15", "09:58", "11:57", "05:35"]
+    for t in times:
         hr, mn = map(int, t.split(":"))
         scheduler.add_job(send_result, "cron", hour=hr, minute=mn)
     scheduler.start()
@@ -84,6 +71,6 @@ def schedule_jobs(app):
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("result", result_cmd))
-    schedule_jobs(app)
+    schedule_jobs()
     print("🤖 Bot started...")
     app.run_polling()
